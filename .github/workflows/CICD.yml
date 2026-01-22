@@ -66,8 +66,25 @@ jobs:
 
       - name: Verify Docker installation
         run: |
-          docker --version
-          docker compose version || docker-compose --version
+          echo "=== Docker Version ==="
+          docker --version || (echo "ERROR: Docker is not installed" && exit 1)
+          
+          echo "=== Docker Compose Version ==="
+          if docker compose version &> /dev/null 2>&1; then
+            docker compose version
+            echo "Using Docker Compose V2"
+          elif docker-compose --version &> /dev/null 2>&1; then
+            docker-compose --version
+            echo "Using Docker Compose V1"
+          else
+            echo "WARNING: Neither docker compose nor docker-compose found"
+          fi
+          
+          echo "=== Docker Info ==="
+          docker info | head -20 || true
+          
+          echo "=== Testing Docker Access ==="
+          docker ps || (echo "ERROR: Cannot access Docker daemon. Check permissions." && exit 1)
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -82,7 +99,20 @@ jobs:
 
       - name: Stop existing containers
         run: |
-          docker compose -f docker-compose.prod.yml down || docker-compose -f docker-compose.prod.yml down || true
+          echo "Stopping existing containers..."
+          if docker compose version &> /dev/null 2>&1; then
+            docker compose -f docker-compose.prod.yml down || true
+          elif docker-compose --version &> /dev/null 2>&1; then
+            docker-compose -f docker-compose.prod.yml down || true
+          else
+            echo "WARNING: Cannot stop containers - docker compose not available"
+          fi
+          
+          # Also try to stop containers by name as fallback
+          docker stop medical-chatbot-backend medical-chatbot-frontend medical-chatbot-nginx 2>/dev/null || true
+          docker rm medical-chatbot-backend medical-chatbot-frontend medical-chatbot-nginx 2>/dev/null || true
+          
+          echo "✅ Cleanup completed"
 
       - name: Pull latest images
         env:
@@ -90,13 +120,36 @@ jobs:
           ECR_REPO_BACKEND: ${{ secrets.ECR_REPO_BACKEND }}
           ECR_REPO_FRONTEND: ${{ secrets.ECR_REPO_FRONTEND }}
         run: |
-          echo "Pulling backend image: $ECR_REGISTRY/$ECR_REPO_BACKEND:latest"
-          docker pull $ECR_REGISTRY/$ECR_REPO_BACKEND:latest || (echo "ERROR: Failed to pull backend image" && exit 1)
-          echo "Pulling frontend image: $ECR_REGISTRY/$ECR_REPO_FRONTEND:latest"
-          docker pull $ECR_REGISTRY/$ECR_REPO_FRONTEND:latest || (echo "ERROR: Failed to pull frontend image" && exit 1)
+          BACKEND_IMAGE="$ECR_REGISTRY/$ECR_REPO_BACKEND:latest"
+          FRONTEND_IMAGE="$ECR_REGISTRY/$ECR_REPO_FRONTEND:latest"
+          
+          echo "Pulling backend image: $BACKEND_IMAGE"
+          if ! docker pull "$BACKEND_IMAGE"; then
+            echo "ERROR: Failed to pull backend image"
+            exit 1
+          fi
+          
+          echo "Pulling frontend image: $FRONTEND_IMAGE"
+          if ! docker pull "$FRONTEND_IMAGE"; then
+            echo "ERROR: Failed to pull frontend image"
+            exit 1
+          fi
+          
           echo "Verifying images..."
-          docker images | grep -E "($ECR_REPO_BACKEND|$ECR_REPO_FRONTEND)"
-          echo "✅ Images pulled successfully"
+          docker images | grep -E "($ECR_REPO_BACKEND|$ECR_REPO_FRONTEND)" || true
+          
+          # Verify images exist
+          if ! docker image inspect "$BACKEND_IMAGE" &> /dev/null; then
+            echo "ERROR: Backend image not found after pull"
+            exit 1
+          fi
+          
+          if ! docker image inspect "$FRONTEND_IMAGE" &> /dev/null; then
+            echo "ERROR: Frontend image not found after pull"
+            exit 1
+          fi
+          
+          echo "✅ Images pulled and verified successfully"
 
       - name: Verify deployment files
         run: |
@@ -118,16 +171,48 @@ jobs:
           echo "Deploying with ECR_REGISTRY=$ECR_REGISTRY"
           echo "Backend image: $ECR_REGISTRY/$ECR_REPO_BACKEND:latest"
           echo "Frontend image: $ECR_REGISTRY/$ECR_REPO_FRONTEND:latest"
-          if command -v docker &> /dev/null && docker compose version &> /dev/null; then
+          
+          # Export environment variables for docker-compose
+          export ECR_REGISTRY ECR_REPO_BACKEND ECR_REPO_FRONTEND
+          export PINECONE_API_KEY GROQ_API_KEY LANGCHAIN_API_KEY LANGCHAIN_PROJECT LANGCHAIN_TRACING_V2
+          
+          # Determine which docker compose command to use
+          if docker compose version &> /dev/null 2>&1; then
+            echo "Using 'docker compose' (V2)"
             docker compose -f docker-compose.prod.yml up -d
-          elif command -v docker-compose &> /dev/null; then
+          elif docker-compose --version &> /dev/null 2>&1; then
+            echo "Using 'docker-compose' (V1)"
             docker-compose -f docker-compose.prod.yml up -d
           else
             echo "ERROR: Neither 'docker compose' nor 'docker-compose' is available"
             exit 1
           fi
+          
+          # Wait a moment for containers to start
+          sleep 5
+          
+          # Verify containers are running
+          if docker compose version &> /dev/null 2>&1; then
+            docker compose -f docker-compose.prod.yml ps
+          else
+            docker-compose -f docker-compose.prod.yml ps
+          fi
 
       - name: Verify deployment
         run: |
-          docker ps
-          docker compose -f docker-compose.prod.yml logs --tail=50 || docker-compose -f docker-compose.prod.yml logs --tail=50
+          echo "=== Container Status ==="
+          docker ps -a
+          echo ""
+          echo "=== Container Logs ==="
+          if docker compose version &> /dev/null 2>&1; then
+            docker compose -f docker-compose.prod.yml logs --tail=50
+          else
+            docker-compose -f docker-compose.prod.yml logs --tail=50
+          fi
+          echo ""
+          echo "=== Health Check ==="
+          if docker compose version &> /dev/null 2>&1; then
+            docker compose -f docker-compose.prod.yml ps
+          else
+            docker-compose -f docker-compose.prod.yml ps
+          fi
