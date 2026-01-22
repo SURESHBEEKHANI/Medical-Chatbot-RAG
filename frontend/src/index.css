@@ -1,0 +1,221 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Medical-grade color palette */
+    --background: 210 40% 98%;
+    --foreground: 215 25% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 215 25% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 25% 15%;
+
+    /* Primary: Trustworthy medical blue */
+    --primary: 213 90% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary: Soft professional gray-blue */
+    --secondary: 210 25% 95%;
+    --secondary-foreground: 215 25% 25%;
+
+    --muted: 210 20% 96%;
+    --muted-foreground: 215 15% 50%;
+
+    --accent: 210 30% 92%;
+    --accent-foreground: 215 25% 20%;
+
+    /* Medical status colors */
+    --safe: 152 60% 45%;
+    --safe-foreground: 0 0% 100%;
+    --safe-light: 152 50% 95%;
+    
+    --warning: 45 95% 55%;
+    --warning-foreground: 30 50% 15%;
+    --warning-light: 45 90% 95%;
+    
+    --critical: 0 75% 55%;
+    --critical-foreground: 0 0% 100%;
+    --critical-light: 0 70% 96%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214 25% 90%;
+    --input: 214 25% 90%;
+    --ring: 213 90% 55%;
+
+    --radius: 0.75rem;
+
+    /* Chat specific */
+    --chat-user: 213 90% 55%;
+    --chat-bot: 210 20% 96%;
+
+    /* Sidebar */
+    --sidebar-background: 210 35% 98%;
+    --sidebar-foreground: 215 20% 35%;
+    --sidebar-primary: 213 90% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 30% 94%;
+    --sidebar-accent-foreground: 215 25% 20%;
+    --sidebar-border: 214 25% 92%;
+    --sidebar-ring: 213 90% 55%;
+  }
+
+  .dark {
+    --background: 220 20% 10%;
+    --foreground: 210 20% 95%;
+
+    --card: 220 18% 13%;
+    --card-foreground: 210 20% 95%;
+
+    --popover: 220 18% 13%;
+    --popover-foreground: 210 20% 95%;
+
+    --primary: 213 85% 60%;
+    --primary-foreground: 220 20% 10%;
+
+    --secondary: 220 15% 18%;
+    --secondary-foreground: 210 20% 90%;
+
+    --muted: 220 15% 18%;
+    --muted-foreground: 215 15% 55%;
+
+    --accent: 220 15% 20%;
+    --accent-foreground: 210 20% 90%;
+
+    --safe: 152 55% 50%;
+    --safe-foreground: 0 0% 100%;
+    --safe-light: 152 30% 15%;
+    
+    --warning: 45 90% 50%;
+    --warning-foreground: 0 0% 10%;
+    --warning-light: 45 30% 15%;
+    
+    --critical: 0 70% 55%;
+    --critical-foreground: 0 0% 100%;
+    --critical-light: 0 30% 15%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 220 15% 20%;
+    --input: 220 15% 20%;
+    --ring: 213 85% 60%;
+
+    --chat-user: 213 85% 60%;
+    --chat-bot: 220 15% 18%;
+
+    --sidebar-background: 220 18% 11%;
+    --sidebar-foreground: 210 15% 75%;
+    --sidebar-primary: 213 85% 60%;
+    --sidebar-primary-foreground: 220 20% 10%;
+    --sidebar-accent: 220 15% 16%;
+    --sidebar-accent-foreground: 210 20% 90%;
+    --sidebar-border: 220 15% 18%;
+    --sidebar-ring: 213 85% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+@layer utilities {
+  /* Medical card variants */
+  .medical-card-safe {
+    @apply bg-safe-light border-l-4 border-l-safe;
+  }
+  
+  .medical-card-warning {
+    @apply bg-warning-light border-l-4 border-l-warning;
+  }
+  
+  .medical-card-critical {
+    @apply bg-critical-light border-l-4 border-l-critical;
+  }
+
+  /* Glass effect */
+  .glass {
+    @apply bg-white/80 dark:bg-card/80 backdrop-blur-lg;
+  }
+
+  /* Typing indicator animation */
+  @keyframes typing-bounce {
+    0%, 60%, 100% {
+      transform: translateY(0);
+    }
+    30% {
+      transform: translateY(-4px);
+    }
+  }
+
+  .typing-dot {
+    animation: typing-bounce 1.4s ease-in-out infinite;
+  }
+
+  .typing-dot:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  .typing-dot:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+
+  /* Message animations */
+  @keyframes message-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .animate-message-in {
+    animation: message-in 0.3s ease-out forwards;
+  }
+
+  /* Pulse glow for focus states */
+  @keyframes pulse-ring {
+    0% {
+      box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4);
+    }
+    70% {
+      box-shadow: 0 0 0 6px hsl(var(--primary) / 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 hsl(var(--primary) / 0);
+    }
+  }
+
+  .focus-pulse:focus {
+    animation: pulse-ring 0.8s ease-out;
+  }
+
+  /* Smooth hover transitions */
+  .hover-lift {
+    @apply transition-all duration-200 ease-out;
+  }
+
+  .hover-lift:hover {
+    @apply -translate-y-0.5 shadow-lg;
+  }
+
+  /* Button press effect */
+  .press-effect:active {
+    @apply scale-[0.98];
+  }
+}
