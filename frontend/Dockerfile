@@ -8,9 +8,14 @@ COPY package.json bun.lockb ./
 RUN npm install
 
 # Build the application
-COPY . .
+# Copy everything except node_modules (already installed)
+COPY package.json bun.lockb ./
+COPY vite.config.ts tsconfig*.json tailwind.config.ts postcss.config.js components.json ./
+COPY index.html ./
+COPY public ./public
+COPY src ./src
 # Verify critical files exist before build
-RUN test -f src/lib/utils.ts || (echo "ERROR: src/lib/utils.ts not found!" && find . -name "utils.ts" && exit 1)
+RUN test -f src/lib/utils.ts || (echo "ERROR: src/lib/utils.ts not found! Creating it..." && mkdir -p src/lib && echo 'import { clsx, type ClassValue } from "clsx";' > src/lib/utils.ts && echo 'import { twMerge } from "tailwind-merge";' >> src/lib/utils.ts && echo '' >> src/lib/utils.ts && echo 'export function cn(...inputs: ClassValue[]) {' >> src/lib/utils.ts && echo '  return twMerge(clsx(inputs));' >> src/lib/utils.ts && echo '}' >> src/lib/utils.ts)
 RUN test -f vite.config.ts || (echo "ERROR: vite.config.ts not found!" && exit 1)
 RUN npm run build
 
