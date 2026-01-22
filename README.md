@@ -95,7 +95,7 @@ This repo includes a workflow at `.github/workflows/CICD.yml` that:
 ### Required GitHub Secrets
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
-- `AWS_REGION` (recommended) or `AWS_DEFAULT_REGION`
+- `AWS_REGION` (e.g., `us-east-1`, `ap-south-1`)
 - `ECR_REPO_BACKEND`
 - `ECR_REPO_FRONTEND`
 - `PINECONE_API_KEY`
