@@ -9,6 +9,9 @@ RUN npm install
 
 # Build the application
 COPY . .
+# Verify critical files exist before build
+RUN test -f src/lib/utils.ts || (echo "ERROR: src/lib/utils.ts not found!" && find . -name "utils.ts" && exit 1)
+RUN test -f vite.config.ts || (echo "ERROR: vite.config.ts not found!" && exit 1)
 RUN npm run build
 
 # Production stage
