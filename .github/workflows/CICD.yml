@@ -92,15 +92,28 @@ jobs:
         run: |
           docker pull $ECR_REGISTRY/$ECR_REPO_BACKEND:latest
           docker pull $ECR_REGISTRY/$ECR_REPO_FRONTEND:latest
+          docker images | grep -E "($ECR_REPO_BACKEND|$ECR_REPO_FRONTEND)"
+
+      - name: Verify deployment files
+        run: |
+          test -f docker-compose.prod.yml || (echo "ERROR: docker-compose.prod.yml not found!" && exit 1)
+          test -f nginx.conf || (echo "WARNING: nginx.conf not found!" || true)
+          echo "✅ Deployment files verified"
 
       - name: Deploy application
         env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPO_BACKEND: ${{ secrets.ECR_REPO_BACKEND }}
+          ECR_REPO_FRONTEND: ${{ secrets.ECR_REPO_FRONTEND }}
           PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           LANGCHAIN_API_KEY: ${{ secrets.LANGCHAIN_API_KEY }}
           LANGCHAIN_PROJECT: ${{ secrets.LANGCHAIN_PROJECT }}
           LANGCHAIN_TRACING_V2: "true"
         run: |
+          echo "Deploying with ECR_REGISTRY=$ECR_REGISTRY"
+          echo "Backend image: $ECR_REGISTRY/$ECR_REPO_BACKEND:latest"
+          echo "Frontend image: $ECR_REGISTRY/$ECR_REPO_FRONTEND:latest"
           docker compose -f docker-compose.prod.yml up -d
 
       - name: Verify deployment
