@@ -12,13 +12,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Debug - Check AWS_REGION secret
+      - name: Verify AWS_REGION secret
         run: |
           if [ -z "$AWS_REGION" ]; then
-            echo "❌ AWS_REGION secret is empty or not set!"
+            echo "::error::AWS_REGION secret is empty or not set in GitHub Secrets!"
+            echo "Please go to Settings > Secrets and variables > Actions and add AWS_REGION"
             exit 1
           else
-            echo "✅ AWS_REGION secret is set: $AWS_REGION"
+            REGION_LENGTH=${#AWS_REGION}
+            echo "✅ AWS_REGION secret is configured (length: $REGION_LENGTH characters)"
+            echo "Region value: $AWS_REGION"
           fi
         env:
           AWS_REGION: ${{ secrets.AWS_REGION }}
