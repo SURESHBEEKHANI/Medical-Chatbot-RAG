@@ -64,6 +64,29 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Verify checkout and list files
+        run: |
+          echo "=== Current Directory ==="
+          pwd
+          echo ""
+          echo "=== Listing files ==="
+          ls -la
+          echo ""
+          echo "=== Checking for docker-compose.prod.yml ==="
+          if [ -f docker-compose.prod.yml ]; then
+            echo "✅ docker-compose.prod.yml exists"
+          else
+            echo "❌ docker-compose.prod.yml NOT FOUND"
+            exit 1
+          fi
+          echo ""
+          echo "=== Checking for nginx.conf ==="
+          if [ -f nginx.conf ]; then
+            echo "✅ nginx.conf exists"
+          else
+            echo "⚠️ nginx.conf NOT FOUND (warning only)"
+          fi
+
       - name: Verify Docker installation
         run: |
           echo "=== Docker Version ==="
@@ -86,6 +109,44 @@ jobs:
           echo "=== Testing Docker Access ==="
           docker ps || (echo "ERROR: Cannot access Docker daemon. Check permissions." && exit 1)
 
+      - name: Verify AWS secrets are set
+        run: |
+          echo "=== Checking AWS Secrets ==="
+          if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
+            echo "❌ AWS_ACCESS_KEY_ID secret is missing"
+            exit 1
+          else
+            echo "✅ AWS_ACCESS_KEY_ID is set"
+          fi
+          
+          if [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+            echo "❌ AWS_SECRET_ACCESS_KEY secret is missing"
+            exit 1
+          else
+            echo "✅ AWS_SECRET_ACCESS_KEY is set"
+          fi
+          
+          if [ -z "${{ secrets.AWS_REGION }}" ]; then
+            echo "❌ AWS_REGION secret is missing"
+            exit 1
+          else
+            echo "✅ AWS_REGION is set to ${{ secrets.AWS_REGION }}"
+          fi
+          
+          if [ -z "${{ secrets.ECR_REPO_BACKEND }}" ]; then
+            echo "❌ ECR_REPO_BACKEND secret is missing"
+            exit 1
+          else
+            echo "✅ ECR_REPO_BACKEND is set"
+          fi
+          
+          if [ -z "${{ secrets.ECR_REPO_FRONTEND }}" ]; then
+            echo "❌ ECR_REPO_FRONTEND secret is missing"
+            exit 1
+          else
+            echo "✅ ECR_REPO_FRONTEND is set"
+          fi
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -93,9 +154,42 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      - name: Verify AWS CLI installation
+        run: |
+          echo "=== Checking AWS CLI ==="
+          if ! command -v aws &> /dev/null; then
+            echo "❌ AWS CLI is not installed"
+            echo "Install it with: sudo apt-get update && sudo apt-get install -y awscli"
+            exit 1
+          fi
+          aws --version
+          echo "✅ AWS CLI is installed"
+
+      - name: Verify AWS credentials
+        run: |
+          echo "=== Testing AWS credentials ==="
+          if ! aws sts get-caller-identity; then
+            echo "❌ AWS credentials verification failed"
+            echo "Check that:"
+            echo "  1. AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY secrets are correct"
+            echo "  2. The IAM user has necessary permissions"
+            exit 1
+          fi
+          echo "✅ AWS credentials are valid"
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Verify ECR login
+        run: |
+          echo "=== ECR Registry ==="
+          echo "Registry: ${{ steps.login-ecr.outputs.registry }}"
+          if [ -z "${{ steps.login-ecr.outputs.registry }}" ]; then
+            echo "❌ ECR registry is empty"
+            exit 1
+          fi
+          echo "✅ ECR login successful"
 
       - name: Stop existing containers
         run: |
