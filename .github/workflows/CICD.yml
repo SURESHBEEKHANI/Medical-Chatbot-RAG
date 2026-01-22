@@ -67,7 +67,7 @@ jobs:
       - name: Verify Docker installation
         run: |
           docker --version
-          docker compose version
+          docker compose version || docker-compose --version
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -82,7 +82,7 @@ jobs:
 
       - name: Stop existing containers
         run: |
-          docker compose -f docker-compose.prod.yml down || true
+          docker compose -f docker-compose.prod.yml down || docker-compose -f docker-compose.prod.yml down || true
 
       - name: Pull latest images
         env:
@@ -90,9 +90,13 @@ jobs:
           ECR_REPO_BACKEND: ${{ secrets.ECR_REPO_BACKEND }}
           ECR_REPO_FRONTEND: ${{ secrets.ECR_REPO_FRONTEND }}
         run: |
-          docker pull $ECR_REGISTRY/$ECR_REPO_BACKEND:latest
-          docker pull $ECR_REGISTRY/$ECR_REPO_FRONTEND:latest
+          echo "Pulling backend image: $ECR_REGISTRY/$ECR_REPO_BACKEND:latest"
+          docker pull $ECR_REGISTRY/$ECR_REPO_BACKEND:latest || (echo "ERROR: Failed to pull backend image" && exit 1)
+          echo "Pulling frontend image: $ECR_REGISTRY/$ECR_REPO_FRONTEND:latest"
+          docker pull $ECR_REGISTRY/$ECR_REPO_FRONTEND:latest || (echo "ERROR: Failed to pull frontend image" && exit 1)
+          echo "Verifying images..."
           docker images | grep -E "($ECR_REPO_BACKEND|$ECR_REPO_FRONTEND)"
+          echo "✅ Images pulled successfully"
 
       - name: Verify deployment files
         run: |
@@ -114,9 +118,16 @@ jobs:
           echo "Deploying with ECR_REGISTRY=$ECR_REGISTRY"
           echo "Backend image: $ECR_REGISTRY/$ECR_REPO_BACKEND:latest"
           echo "Frontend image: $ECR_REGISTRY/$ECR_REPO_FRONTEND:latest"
-          docker compose -f docker-compose.prod.yml up -d
+          if command -v docker &> /dev/null && docker compose version &> /dev/null; then
+            docker compose -f docker-compose.prod.yml up -d
+          elif command -v docker-compose &> /dev/null; then
+            docker-compose -f docker-compose.prod.yml up -d
+          else
+            echo "ERROR: Neither 'docker compose' nor 'docker-compose' is available"
+            exit 1
+          fi
 
       - name: Verify deployment
         run: |
           docker ps
-          docker compose -f docker-compose.prod.yml logs --tail=50
+          docker compose -f docker-compose.prod.yml logs --tail=50 || docker-compose -f docker-compose.prod.yml logs --tail=50
