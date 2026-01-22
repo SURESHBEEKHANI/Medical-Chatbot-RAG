@@ -1,132 +1,104 @@
-# End-to-end-Medical-Chatbot-Generative-AI
+# Medical Chatbot (RAG) — FastAPI + React (Vite)
 
+End-to-end **RAG-based medical Q&A** app:
+- **Backend**: FastAPI (`backend/main.py`) + LangChain + Pinecone + Groq
+- **Frontend**: React + Vite (`frontend/`)
+- **API**: `POST /api/ask`, `GET /api/health`
 
-# How to run?
-### STEPS:
+## Prerequisites
+- **Docker + Docker Compose** (recommended), or:
+  - Python **3.12+** (backend)
+  - Node.js **18+** (frontend)
 
-Clone the repository
-
-```bash
-Project repo: https://github.com/SURESHBEEKHANI/Medical-Chatbot-RAG-System.git
-```
-### STEP 01- Create a conda environment after opening the repository
-
-```bash
-conda create -n medibot python=3.10 -y
-```
-
-```bash
-conda activate medibot
-```
-
-
-### STEP 02- install the requirements
-```bash
-pip install -r requirements.txt
-```
-
-
-### Create a `.env` file in the root directory and add your Pinecone & openai credentials as follows:
+## Environment variables
+Create a `.env` file in the **repo root** (used by Docker Compose and loaded by the backend):
 
 ```ini
-PINECONE_API_KEY = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-groq_API_KEY = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+PINECONE_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+GROQ_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# Optional (LangSmith / LangChain tracing)
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+LANGCHAIN_PROJECT=medical-chatbot
 ```
 
+## Run with Docker (recommended)
+From the repo root:
 
 ```bash
-# run the following command to store embeddings to pinecone
+docker compose up -d --build
+```
+
+Open:
+- **Frontend**: `http://localhost:8080`
+- **Backend API**: `http://localhost:8000`
+- **Swagger**: `http://localhost:8000/docs`
+
+## Run locally (without Docker)
+
+### Backend (FastAPI)
+```bash
+cd backend
+python -m venv .venv
+# Windows:
+.venv\Scripts\activate
+# macOS/Linux:
+# source .venv/bin/activate
+
+pip install -r requirements.txt
+python main.py
+```
+
+Backend runs on `http://localhost:8000`.
+
+### Frontend (Vite)
+In a second terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend runs on `http://localhost:5173` (Vite default).
+
+## Build the Pinecone index (one-time)
+If you want to (re)create embeddings and upsert into Pinecone:
+
+```bash
+cd backend
 python store_index.py
 ```
 
+## API
+- `GET /api/health` — health check
+- `POST /api/ask` — ask a medical question
+
+Example:
+
 ```bash
-# Finally run the following command
-python app.py
+curl -X POST "http://localhost:8000/api/ask" ^
+  -H "Content-Type: application/json" ^
+  -d "{\"question\":\"What are symptoms of dehydration?\"}"
 ```
 
-Now,
-```bash
-open up localhost:
-```
+## Tech stack
+- **Backend**: Python, FastAPI, LangChain, Pinecone, Groq, SentenceTransformers
+- **Frontend**: React, Vite, TypeScript, Tailwind, shadcn/ui
 
+## AWS CI/CD deployment (GitHub Actions → ECR → EC2)
+This repo includes a workflow at `.github/workflows/CICD.yml` that:
+- Builds and pushes **backend** and **frontend** images to **Amazon ECR**
+- Deploys to an **EC2 self-hosted GitHub Actions runner** using `docker compose -f docker-compose.prod.yml up -d`
 
-### Techstack Used:
-
-- Python
-- LangChain
-- Flask
-- Llama 3.3 70B
-- Pinecone
-
-
-# AWS-CICD-Deployment-with-Github-Actions
-
-## 1. Login to AWS console.
-
-## 2. Create IAM user for deployment
-
-	#with specific access
-
-	1. EC2 access : It is virtual machine
-
-	2. ECR: Elastic Container registry to save your docker image in aws
-
-
-	#Description: About the deployment
-
-	1. Build docker image of the source code
-
-	2. Push your docker image to ECR
-
-	3. Launch Your EC2 
-
-	4. Pull Your image from ECR in EC2
-
-	5. Lauch your docker image in EC2
-
-	#Policy:
-
-	1. AmazonEC2ContainerRegistryFullAccess
-
-	2. AmazonEC2FullAccess
-
-	
-## 3. Create ECR repo to store/save docker image
-    - Save the URI: 970547337635.dkr.ecr.ap-south-1.amazonaws.com/medicalchatbot
-
-	
-## 4. Create EC2 machine (Ubuntu) 
-
-## 5. Open EC2 and Install docker in EC2 Machine:
-	
-	
-	#optinal
-
-	sudo apt-get update -y
-
-	sudo apt-get upgrade
-	
-	#required
-
-	curl -fsSL https://get.docker.com -o get-docker.sh
-
-	sudo sh get-docker.sh
-
-	sudo usermod -aG docker ubuntu
-
-	newgrp docker
-	
-# 6. Configure EC2 as self-hosted runner:
-    setting>actions>runner>new self hosted runner> choose os> then run command one by one
-
-
-# 7. Setup github secrets:
-
-   - AWS_ACCESS_KEY_ID
-   - AWS_SECRET_ACCESS_KEY
-   - AWS_DEFAULT_REGION
-   - ECR_REPO
-   - PINECONE_API_KEY
-   - groq_API_KEY
-
-    
+### Required GitHub Secrets
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `AWS_DEFAULT_REGION`
+- `ECR_REPO_BACKEND`
+- `ECR_REPO_FRONTEND`
+- `PINECONE_API_KEY`
+- `GROQ_API_KEY`
+- `LANGCHAIN_API_KEY` (optional)
+- `LANGCHAIN_PROJECT` (optional)
